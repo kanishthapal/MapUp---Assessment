@@ -11,9 +11,18 @@ def calculate_distance_matrix(df)->pd.DataFrame():
     Returns:
         pandas.DataFrame: Distance matrix
     """
-    # Write your logic here
+    id_list = pd.concat([df['id_start'], df['id_end']]).unique()
+    distance_matrix = pd.DataFrame(index=id_list, columns=id_list)
 
-    return df
+    # Fill in the DataFrame with distances
+    for _, row in df.iterrows():
+        distance_matrix.loc[row['id_start'], row['id_end']] = row['distance']
+        distance_matrix.loc[row['id_end'], row['id_start']] = row['distance']
+
+    # Set diagonal values to 0
+    for i in id_list:
+        distance_matrix.loc[i, i] = 0
+    return distance_matrix
 
 
 def unroll_distance_matrix(df)->pd.DataFrame():
@@ -27,8 +36,15 @@ def unroll_distance_matrix(df)->pd.DataFrame():
         pandas.DataFrame: Unrolled DataFrame containing columns 'id_start', 'id_end', and 'distance'.
     """
     # Write your logic here
+    distance_df = distance_matrix.reset_index()
+    unrolled_df = pd.melt(distance_df, id_vars='index', var_name='id_end', value_name='distance')
 
-    return df
+    unrolled_df.columns = ['id_start', 'id_end', 'distance']
+    unrolled_df = unrolled_df[unrolled_df['id_start'] != unrolled_df['id_end']]
+
+    unrolled_df.reset_index(drop=True, inplace=True)
+
+    return unrolled_df
 
 
 def find_ids_within_ten_percentage_threshold(df, reference_id)->pd.DataFrame():
