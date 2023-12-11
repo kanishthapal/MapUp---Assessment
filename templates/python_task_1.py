@@ -1,92 +1,134 @@
 import pandas as pd
+import numpy as np
 
 
-def generate_car_matrix(df)->pd.DataFrame:
-    """
-    Creates a DataFrame  for id combinations.
+df = pd.read_csv(r"C:\Users\Pasaog Tsomu\Downloads\dataset-1.csv")
+df
 
-    Args:
-        df (pandas.DataFrame)
+# # Question 1
 
-    Returns:
-        pandas.DataFrame: Matrix generated with 'car' values, 
-                          where 'id_1' and 'id_2' are used as indices and columns respectively.
-    """
-    # Write your logic here
+def generate_car_matrix(df):
+    # Create a pivot table using id_1 as index, id_2 as columns, and car as values
+    car_matrix = df.pivot_table(index='id_1', columns='id_2', values='car', fill_value=0)
 
-    return df
+    # Set diagonal values to 0
+    for i in car_matrix.index:
+        if i in car_matrix.columns:
+            car_matrix.loc[i, i] = 0
 
-
-def get_type_count(df)->dict:
-    """
-    Categorizes 'car' values into types and returns a dictionary of counts.
-
-    Args:
-        df (pandas.DataFrame)
-
-    Returns:
-        dict: A dictionary with car types as keys and their counts as values.
-    """
-    # Write your logic here
-
-    return dict()
+    return car_matrix
 
 
-def get_bus_indexes(df)->list:
-    """
-    Returns the indexes where the 'bus' values are greater than twice the mean.
-
-    Args:
-        df (pandas.DataFrame)
-
-    Returns:
-        list: List of indexes where 'bus' values exceed twice the mean.
-    """
-    # Write your logic here
-
-    return list()
+result_matrix = generate_car_matrix(df)
+print(result_matrix)
 
 
-def filter_routes(df)->list:
-    """
-    Filters and returns routes with average 'truck' values greater than 7.
+# # Question 2
 
-    Args:
-        df (pandas.DataFrame)
+def get_type_count(df):
+    conditions = [
+        (df['car'] <= 15),
+        (df['car'] > 15) & (df['car'] <= 25),
+        (df['car'] > 25)
+    ]
+    choices = ['low', 'medium', 'high']
+    df['car_type'] = pd.Series(np.select(conditions, choices, default='unknown'), dtype='category')
+    type_count = df['car_type'].value_counts().to_dict()
+    type_count = dict(sorted(type_count.items()))
 
-    Returns:
-        list: List of route names with average 'truck' values greater than 7.
-    """
-    # Write your logic here
+    return type_count
 
-    return list()
-
-
-def multiply_matrix(matrix)->pd.DataFrame:
-    """
-    Multiplies matrix values with custom conditions.
-
-    Args:
-        matrix (pandas.DataFrame)
-
-    Returns:
-        pandas.DataFrame: Modified matrix with values multiplied based on custom conditions.
-    """
-    # Write your logic here
-
-    return matrix
+result = get_type_count(df)
+print(result)
 
 
-def time_check(df)->pd.Series:
-    """
-    Use shared dataset-2 to verify the completeness of the data by checking whether the timestamps for each unique (`id`, `id_2`) pair cover a full 24-hour and 7 days period
+# # Question 3
 
-    Args:
-        df (pandas.DataFrame)
+def get_bus_indexes(df):
+    bus_mean = df['bus'].mean()
+    bus_indexes = df[df['bus'] > 2 * bus_mean].index.tolist()
+    # Sort the indices in ascending order
+    bus_indexes.sort()
 
-    Returns:
-        pd.Series: return a boolean series
-    """
-    # Write your logic here
+    return bus_indexes
 
-    return pd.Series()
+
+result = get_bus_indexes(df)
+print(result)
+
+
+# # Question 4
+
+def filter_routes(df):
+    route_avg_truck = df.groupby('route')['truck'].mean()
+
+    # Filter routes where the average of 'truck' values is greater than 7
+    filtered_routes = route_avg_truck[route_avg_truck > 7].index.tolist()
+
+    # Sort the list of filtered routes
+    filtered_routes.sort()
+
+    return filtered_routes
+
+result = filter_routes(df)
+print(result)
+
+
+# # Question 5
+
+def multiply_matrix(result_matrix):
+    modified_matrix = result_matrix.copy(deep=True)
+    # Apply the specified logic to modify values
+    modified_matrix[modified_matrix > 20] *= 0.75
+    modified_matrix[modified_matrix <= 20] *= 1.25
+    
+    modified_matrix = modified_matrix.round(1)
+
+    return modified_matrix
+
+
+modified_result_matrix = multiply_matrix(result_matrix)
+print(modified_result_matrix)
+
+
+# # Question 6
+
+data = pd.read_csv(r"C:\Users\Pasaog Tsomu\Downloads\dataset-2.csv")
+data
+
+
+def check_time_completeness(data):
+    data['start_timestamp'] = pd.to_datetime(data['startDay'] + ' ' + data['startTime'], errors='coerce')
+    data['end_timestamp'] = pd.to_datetime(data['endDay'] + ' ' + data['endTime'], errors='coerce')
+
+    grouped = data.groupby(['id', 'id_2'])
+
+    expected_time_range = pd.date_range(start='12:00:00 AM', end='11:59:59 PM', freq='15T')
+
+    # Check if each pair has incorrect timestamps
+    def check_pair(pair_df):
+        for day in range(7):
+            # Filter data for the current day
+            day_data = pair_df[(pair_df['start_timestamp'].dt.dayofweek == day) & 
+                                (pair_df['end_timestamp'].dt.dayofweek == day)]
+
+            # Check if the time range for the current day is complete
+            if not expected_time_range.isin(day_data['start_timestamp']).all() or                not expected_time_range.isin(day_data['end_timestamp']).all():
+                return True  
+        return False
+
+    # Apply the check_pair function to each group and return the boolean series
+    return grouped.apply(check_pair)
+
+result_series = check_time_completeness(data)
+print(result_series)
+
+
+    
+
+    
+
+    
+    
+
+    
